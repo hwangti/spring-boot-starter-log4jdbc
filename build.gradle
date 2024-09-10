@@ -1,0 +1,85 @@
+import com.vanniktech.maven.publish.SonatypeHost
+
+buildscript {
+    ext {
+        springBootVersion = '2.7.18'
+        springDependencyManagementVersion = '1.0.15.RELEASE'
+        mavenPublishingPluginVersion = '0.29.0'
+        mavenPublishingArtifactId = 'spring-boot-starter-log4jdbc'
+        mavenPublishingArtifactName = 'Spring Boot Starter log4jdbc'
+        mavenPublishingDescription = 'The Log4jdbc Spring Boot 2+ Starter facilitates the quick and easy use of http://log4jdbc.brunorozendo.com/ in Spring Boot projects.'
+        coordinateGroup = 'kr.hwangti'
+        libraryVersion = '1.0.0'
+        gitUrl = 'https://github.com/hwangti/spring-boot-starter-log4jdbc'
+    }
+}
+
+plugins {
+    id 'java-library'
+    id 'io.spring.dependency-management' version "${springDependencyManagementVersion}"
+
+    id 'com.vanniktech.maven.publish' version "${mavenPublishingPluginVersion}"
+}
+
+group = "${coordinateGroup}"
+version = "${libraryVersion}"
+
+java {
+    sourceCompatibility = 1.8
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.boot:spring-boot-dependencies:${springBootVersion}"
+    }
+}
+
+dependencies {
+    implementation "org.springframework.boot:spring-boot-starter-data-jpa:${springBootVersion}"
+
+    annotationProcessor 'org.springframework.boot:spring-boot-autoconfigure-processor'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs << '-Xlint:unchecked' << '-Xlint:deprecation'
+    options.encoding = 'UTF-8'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+mavenPublishing {
+    coordinates("${coordinateGroup}", "${mavenPublishingArtifactId}", "${libraryVersion}")
+    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+    signAllPublications()
+
+    pom {
+        name = "${mavenPublishingArtifactName}"
+        description = "${mavenPublishingDescription}"
+        url = "${gitUrl}"
+
+        licenses {
+            license {
+                name = 'The Apache License, Version 2.0'
+                url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+            }
+        }
+
+        developers {
+            developer {
+                id = 'hwangti'
+                name = 'TAEROK HWANG'
+                email = 'hwangti@hwangti.kr'
+            }
+        }
+
+        scm {
+            url = "${gitUrl}"
+        }
+    }
+}
