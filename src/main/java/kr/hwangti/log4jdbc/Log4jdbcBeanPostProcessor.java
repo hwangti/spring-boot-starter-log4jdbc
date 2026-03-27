@@ -38,16 +38,18 @@ public class Log4jdbcBeanPostProcessor implements BeanPostProcessor {
             "log4jdbc.dump.sql.maxlinelength",
             "log4jdbc.dump.sql.select",
             "log4jdbc.dump.sql.update",
+            "log4jdbc.format.sql",
+            "log4jdbc.highlight.sql",
             "log4jdbc.log4j2.properties.file",
+            "log4jdbc.resultsettable.maxcolumnwidth",
+            "log4jdbc.resultsettable.maxrows",
+            "log4jdbc.spylogdelegator.name",
             "log4jdbc.sqltiming.error.threshold",
             "log4jdbc.sqltiming.warn.threshold",
             "log4jdbc.statement.warn",
-            "log4jdbc.spylogdelegator.name",
-            "log4jdbc.trim.sql",
-            "log4jdbc.trim.sql.extrablanklines",
             "log4jdbc.suppress.generated.keys.exception",
-            "spring.jpa.properties.hibernate.format_sql",
-            "spring.jpa.properties.hibernate.highlight_sql"
+            "log4jdbc.trim.sql",
+            "log4jdbc.trim.sql.extrablanklines"
     };
 
     /**

@@ -31,7 +31,7 @@ import java.util.*;
  */
 public class DefaultResultSetCollector implements ResultSetCollector {
 
-    private static final String NULL_RESULT_SET_VAL = "[NULL]";
+    public static final String NULL_RESULT_SET_VAL = "<NULL>";
     private static final String UNREAD = "[unread]";
     private static final String UNREAD_ERROR = "[unread!]";
     private boolean fillInUnreadValues = false;
@@ -78,6 +78,7 @@ public class DefaultResultSetCollector implements ResultSetCollector {
      * for each column (see {@link #columnCount}).
      */
     private Map<Integer, String> columnNames;
+    private Map<Integer, Integer> columnTypes;
     /**
      * A <code>boolean</code> that is the last value returned by a call
      * to <code>next</code> (or <code>first</code>) on the related <code>ResultSet</code>.
@@ -121,6 +122,7 @@ public class DefaultResultSetCollector implements ResultSetCollector {
         columnCount = 0;
         columnLabels = new HashMap<>();
         columnNames = new HashMap<>();
+        columnTypes = new HashMap<>();
     }
 
     @Override
@@ -167,6 +169,7 @@ public class DefaultResultSetCollector implements ResultSetCollector {
                 String name  = metaData.getColumnName(column).toLowerCase();
                 this.columnLabels.put(column, label);
                 this.columnNames.put(column, name);
+                this.columnTypes.put(column, metaData.getColumnType(column));
                 colNameToColIndex.put(label, column);
                 colNameToColIndex.put(name, column);
             }
@@ -195,6 +198,11 @@ public class DefaultResultSetCollector implements ResultSetCollector {
         return this.columnLabels.get(column);
     }
 
+    @Override
+    public int getColumnType(int column) {
+        return this.columnTypes.getOrDefault(column, java.sql.Types.VARCHAR);
+    }
+
     /**
      * @see net.sf.log4jdbc.sql.resultsetcollector.ResultSetCollector#methodReturned(ResultSetSpy, String, Object, Object, Object...)
      */
@@ -209,7 +217,7 @@ public class DefaultResultSetCollector implements ResultSetCollector {
             if (GETTERS.contains(methodName) && getColumnCount() != 0) {
                 setColIndexFromGetXXXMethodParams(methodParams);
                 makeRowIfNeeded();
-                row.set(colIndex - 1, returnValue);
+                row.set(colIndex - 1, returnValue != null ? returnValue : NULL_RESULT_SET_VAL);
             }
         }
         if (methodCall.equals("wasNull()") && getColumnCount() != 0) {
@@ -218,7 +226,7 @@ public class DefaultResultSetCollector implements ResultSetCollector {
             }
         }
         if ("next()".equals(methodCall) || "first()".equals(methodCall)) {
-            this.lastValueReturnedByNext = (Boolean) returnValue;
+            this.lastValueReturnedByNext = Boolean.TRUE.equals(returnValue);
         }
         if ("next()".equals(methodCall) || "first()".equals(methodCall) ||
                 "close()".equals(methodCall)) {
@@ -230,7 +238,7 @@ public class DefaultResultSetCollector implements ResultSetCollector {
                             Boolean.FALSE.equals(returnValue) ;
             if (row != null) {
                 if (rows == null)
-                    rows = new ArrayList<List<Object>>();
+                    rows = new ArrayList<>();
                 rows.add(row);
                 row = null;
             }

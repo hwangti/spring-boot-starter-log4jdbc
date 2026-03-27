@@ -176,6 +176,10 @@ public final class Properties {
 
     static final boolean HighlightSql;
 
+    static final long ResultSetTableMaxColumnWidth;
+
+    static final long ResultSetTableMaxRows;
+
     /*
      * Static initializer.
      */
@@ -259,8 +263,11 @@ public final class Properties {
         SuppressGetGeneratedKeysException =
                 getBooleanOption(props, "log4jdbc.suppress.generated.keys.exception", false);
 
-        FormatSql = getBooleanOption(props, "spring.jpa.properties.hibernate.format_sql", false);
-        HighlightSql = getBooleanOption(props, "spring.jpa.properties.hibernate.highlight_sql", false);
+        FormatSql = getBooleanOption(props, "log4jdbc.format.sql", true);
+        HighlightSql = getBooleanOption(props, "log4jdbc.highlight.sql", true);
+
+        ResultSetTableMaxColumnWidth = getLongOption(props, "log4jdbc.resultsettable.maxcolumnwidth", 50);
+        ResultSetTableMaxRows = getLongOption(props, "log4jdbc.resultsettable.maxrows", 50);
 
         log.debug("log4jdbc-logj2 properties initialization done.");
     }
@@ -640,6 +647,28 @@ public final class Properties {
      */
     public static boolean isHighlightSql() {
         return HighlightSql;
+    }
+
+    /**
+     * Get the maximum column width for result set table logging.
+     * Columns wider than this value will be truncated.
+     * 0 means no limit.
+     *
+     * @return the ResultSetTableMaxColumnWidth
+     */
+    public static long getResultSetTableMaxColumnWidth() {
+        return ResultSetTableMaxColumnWidth;
+    }
+
+    /**
+     * Get the maximum number of rows to display in result set table logging.
+     * Rows beyond this limit will be omitted with a summary message.
+     * 0 means no limit.
+     *
+     * @return the ResultSetTableMaxRows
+     */
+    public static long getResultSetTableMaxRows() {
+        return ResultSetTableMaxRows;
     }
 
 }

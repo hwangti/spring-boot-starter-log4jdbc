@@ -16,6 +16,9 @@
 
 package net.sf.log4jdbc.sql.resultsetcollector;
 
+import net.sf.log4jdbc.Properties;
+
+import java.sql.Types;
 import java.util.List;
 
 /**
@@ -28,6 +31,8 @@ import java.util.List;
 public class ResultSetCollectorPrinter {
 
     private static final String nl = System.lineSeparator();
+    private static final String GRAY = "\033[90m";
+    private static final String RESET = "\033[0m";
 
     /**
      * Default constructor
@@ -39,34 +44,31 @@ public class ResultSetCollectorPrinter {
      * Return a table which represents a <code>ResultSet</code>, to be printed by a logger,
      * based on the content of the provided <code>resultSetCollector</code>.
      *
-     * <p>This method will be actually called by a <code>SpyLogDelegator</code>
-     * when the <code>next()</code> method of the spied <code>ResultSet</code>
-     * return <code>false</code> meaning that its end is reached.
-     * It will be also called if the <code>ResultSet</code> is closed.</p>
-     *
      * @param resultSetCollector the ResultSetCollector which has collected the data we want to print
      * @return A <code>String</code> which contains the formatted table to print
-     *
-     * @see net.sf.log4jdbc.sql.jdbcapi.ResultSetSpy
-     * @see net.sf.log4jdbc.sql.resultsetcollector.DefaultResultSetCollector
-     * @see net.sf.log4jdbc.log.SpyLogDelegator
      */
     public String getResultSetToPrint(ResultSetCollector resultSetCollector) {
-        /*
-         * A StringBuffer which is used to build the formatted table to print
-         */
         final StringBuilder table = new StringBuilder();
-        table.append(nl);
+        int totalRows = resultSetCollector.getRows() != null ? resultSetCollector.getRows().size() : 0;
+        table.append(totalRows).append(" row(s) fetched").append(nl);
 
         int columnCount = resultSetCollector.getColumnCount();
         int[] maxLength = new int[columnCount];
+        boolean[] numeric = new boolean[columnCount];
 
-        // 1. Calculate maximum width of each column (including column name)
+        // 1. Determine numeric columns
+        for (int column = 1; column <= columnCount; column++) {
+            numeric[column - 1] = isNumericType(resultSetCollector.getColumnType(column));
+        }
+
+        int maxColumnWidth = (int) Properties.getResultSetTableMaxColumnWidth();
+
+        // 2. Calculate maximum width of each column (including column name)
         for (int column = 1; column <= columnCount; column++) {
             maxLength[column - 1] = calculateWidth(resultSetCollector.getColumnName(column));
         }
 
-        // 2. Calculate maximum length of row data
+        // 3. Calculate maximum length of row data
         if (resultSetCollector.getRows() != null) {
             for (List<Object> printRow : resultSetCollector.getRows()) {
                 int colIndex = 0;
@@ -82,63 +84,118 @@ public class ResultSetCollectorPrinter {
             }
         }
 
-        // 3. Add free space
-        for (int i = 0; i < columnCount; i++) {
-            maxLength[i] += 1;
-        }
-
-        // 4. Remove duplicates with border and header generation functions
-        String boundaryLine = createBoundaryLine(maxLength);
-        table.append(boundaryLine);
-        table.append("|");
-
-        for (int column = 1; column <= columnCount; column++) {
-            table.append(padRight(resultSetCollector.getColumnName(column), maxLength[column - 1]))
-                    .append("|");
-        }
-
-        table.append(nl);
-        table.append(boundaryLine);
-
-        // 5. Data output
-        if (resultSetCollector.getRows() != null) {
-            for (List<Object> printRow : resultSetCollector.getRows()) {
-                table.append("|");
-                int colIndex = 0;
-                for (Object v : printRow) {
-                    table.append(padRight(v == null ? "NULL" : v.toString(), maxLength[colIndex]))
-                            .append("|");
-                    colIndex++;
+        // 4. Apply max column width limit
+        if (maxColumnWidth > 0) {
+            for (int i = 0; i < columnCount; i++) {
+                if (maxLength[i] > maxColumnWidth) {
+                    maxLength[i] = maxColumnWidth;
                 }
-                table.append(nl);
             }
         }
 
-        table.append(boundaryLine);
+        // 5. Top border ┌───┬───┐
+        table.append(createBorderLine(maxLength, '┌', '┬', '┐'));
+
+        // 6. Header row │ col │
+        String pipe = border("│");
+        table.append(pipe);
+        for (int column = 1; column <= columnCount; column++) {
+            table.append(" ")
+                    .append(padRight(truncate(resultSetCollector.getColumnName(column), maxLength[column - 1]), maxLength[column - 1]))
+                    .append(" ").append(pipe);
+        }
+        table.append(nl);
+
+        // 7. Header separator ├───┼───┤
+        table.append(createBorderLine(maxLength, '├', '┼', '┤'));
+
+        // 8. Data rows
+        int maxRows = (int) Properties.getResultSetTableMaxRows();
+        if (resultSetCollector.getRows() != null) {
+            int rowIndex = 0;
+            for (List<Object> printRow : resultSetCollector.getRows()) {
+                if (maxRows > 0 && rowIndex >= maxRows) {
+                    break;
+                }
+                table.append(pipe);
+                int colIndex = 0;
+                for (Object v : printRow) {
+                    String raw = v == null ? DefaultResultSetCollector.NULL_RESULT_SET_VAL : v.toString();
+                    boolean isNull = DefaultResultSetCollector.NULL_RESULT_SET_VAL.equals(raw);
+                    String value = truncate(raw, maxLength[colIndex]);
+                    String padded;
+                    if (numeric[colIndex]) {
+                        padded = padLeft(value, maxLength[colIndex]);
+                    } else {
+                        padded = padRight(value, maxLength[colIndex]);
+                    }
+                    table.append(" ")
+                            .append(isNull ? gray(padded) : padded)
+                            .append(" ").append(pipe);
+                    colIndex++;
+                }
+                table.append(nl);
+                rowIndex++;
+            }
+            // Ellipsis row + summary outside table
+            if (maxRows > 0 && totalRows > maxRows) {
+                int omitted = totalRows - maxRows;
+                table.append(pipe);
+                for (int i = 0; i < columnCount; i++) {
+                    if (numeric[i]) {
+                        table.append(" ").append(padLeft("...", maxLength[i])).append(" ").append(pipe);
+                    } else {
+                        table.append(" ").append(padRight("...", maxLength[i])).append(" ").append(pipe);
+                    }
+                }
+                table.append(nl);
+                table.append(createBorderLine(maxLength, '└', '┴', '┘'));
+                table.append(" ... ").append(omitted).append(" row(s) omitted").append(nl);
+                resultSetCollector.reset();
+                return table.toString();
+            }
+        }
+
+        // 9. Bottom border └───┴───┘
+        table.append(createBorderLine(maxLength, '└', '┴', '┘'));
 
         resultSetCollector.reset();
         return table.toString();
     }
 
+    private static boolean isNumericType(int sqlType) {
+        switch (sqlType) {
+            case Types.TINYINT:
+            case Types.SMALLINT:
+            case Types.INTEGER:
+            case Types.BIGINT:
+            case Types.FLOAT:
+            case Types.REAL:
+            case Types.DOUBLE:
+            case Types.NUMERIC:
+            case Types.DECIMAL:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static int charWidth(char c) {
+        Character.UnicodeBlock block = Character.UnicodeBlock.of(c);
+        return (block == Character.UnicodeBlock.HANGUL_SYLLABLES ||
+                block == Character.UnicodeBlock.HANGUL_JAMO ||
+                block == Character.UnicodeBlock.HANGUL_COMPATIBILITY_JAMO
+        ) ? 17 : 10;
+    }
+
     private static int calculateWidth(String value) {
         int width = 0;
         for (char c : value.toCharArray()) {
-            Character.UnicodeBlock unicodeBlock = Character.UnicodeBlock.of(c);
-            width += (
-                    unicodeBlock == Character.UnicodeBlock.HANGUL_SYLLABLES ||
-                            unicodeBlock == Character.UnicodeBlock.HANGUL_JAMO ||
-                            unicodeBlock == Character.UnicodeBlock.HANGUL_COMPATIBILITY_JAMO
-            ) ? 17 : 10;
+            width += charWidth(c);
         }
         return width / 10;
     }
 
-    /**
-     * Add space to the provided <code>String</code> to match the provided width
-     * @param s the <code>String</code> we want to adjust
-     * @param n the width of the returned <code>String</code>
-     * @return a <code>String</code> matching the provided width
-     */
     private static String padRight(String s, int n) {
         int padding = n - calculateWidth(s);
         StringBuilder padded = new StringBuilder(s);
@@ -148,14 +205,59 @@ public class ResultSetCollectorPrinter {
         return padded.toString();
     }
 
-    private String createBoundaryLine(int[] maxLength) {
-        StringBuilder line = new StringBuilder("|");
-        for (int length : maxLength) {
-            for (int i = 0; i < length; i++) {
-                line.append("-");
-            }
-            line.append("|");
+    private static String truncate(String s, int maxWidth) {
+        if (maxWidth <= 0 || calculateWidth(s) <= maxWidth) {
+            return s;
         }
-        return line.append(nl).toString();
+        int ellipsisWidth = 3; // "..." = 3 columns
+        StringBuilder sb = new StringBuilder();
+        int widthAccum = 0;
+        for (char c : s.toCharArray()) {
+            int cw = charWidth(c);
+            if ((widthAccum + cw) / 10 > maxWidth - ellipsisWidth) {
+                break;
+            }
+            sb.append(c);
+            widthAccum += cw;
+        }
+        sb.append("...");
+        return sb.toString();
+    }
+
+    private static String padLeft(String s, int n) {
+        int padding = n - calculateWidth(s);
+        StringBuilder padded = new StringBuilder();
+        for (int i = 0; i < padding; i++) {
+            padded.append(" ");
+        }
+        padded.append(s);
+        return padded.toString();
+    }
+
+    private static String border(String s) {
+        if (Properties.isHighlightSql()) {
+            return GRAY + s + RESET;
+        }
+        return s;
+    }
+
+    private static String gray(String s) {
+        if (Properties.isHighlightSql()) {
+            return GRAY + s + RESET;
+        }
+        return s;
+    }
+
+    private String createBorderLine(int[] maxLength, char left, char middle, char right) {
+        StringBuilder line = new StringBuilder();
+        line.append(left);
+        for (int i = 0; i < maxLength.length; i++) {
+            // +2 for left/right padding spaces
+            for (int j = 0; j < maxLength[i] + 2; j++) {
+                line.append('─');
+            }
+            line.append(i < maxLength.length - 1 ? middle : right);
+        }
+        return border(line.toString()) + nl;
     }
 }

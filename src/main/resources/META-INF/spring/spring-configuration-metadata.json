@@ -117,9 +117,33 @@
       "defaultValue": false
     },
     {
+      "name": "log4jdbc.format.sql",
+      "type": "java.lang.Boolean",
+      "description": "Set this to true to enable pretty-printing of SQL using Hibernate's FormatStyle. DDL statements use DDL formatting, other statements use BASIC formatting.",
+      "defaultValue": true
+    },
+    {
+      "name": "log4jdbc.highlight.sql",
+      "type": "java.lang.Boolean",
+      "description": "Set this to true to enable ANSI syntax highlighting of SQL using Hibernate's FormatStyle.HIGHLIGHT. Requires a terminal that supports ANSI escape codes.",
+      "defaultValue": true
+    },
+    {
       "name": "log4jdbc.log4j2.properties.file",
       "description": "Name of the property file to use",
       "type": "org.springframework.core.io.Resource"
+    },
+    {
+      "name": "log4jdbc.resultsettable.maxcolumnwidth",
+      "type": "java.lang.Long",
+      "description": "Maximum display width (in characters) for each column in the result set table output. Columns wider than this value will be truncated with '...'. Set to 0 to disable truncation.",
+      "defaultValue": 50
+    },
+    {
+      "name": "log4jdbc.resultsettable.maxrows",
+      "type": "java.lang.Long",
+      "description": "Maximum number of rows to display in the result set table output. When exceeded, remaining rows are replaced with an ellipsis row and an omitted row count summary. Set to 0 to display all rows.",
+      "defaultValue": 50
     }
   ]
 }

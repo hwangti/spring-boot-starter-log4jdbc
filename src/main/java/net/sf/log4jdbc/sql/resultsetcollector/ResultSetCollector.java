@@ -81,6 +81,14 @@ public interface ResultSetCollector {
     String getColumnName(int column);
 
     /**
+     * Get the JDBC type ({@link java.sql.Types}) of a column.
+     *
+     * @param column column index (1-based)
+     * @return the JDBC type constant from {@link java.sql.Types}
+     */
+    int getColumnType(int column);
+
+    /**
      * Clear the result set so far.
      */
     void reset();
