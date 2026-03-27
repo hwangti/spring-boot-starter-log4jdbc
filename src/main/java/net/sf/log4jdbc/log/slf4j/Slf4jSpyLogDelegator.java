@@ -42,6 +42,18 @@ import java.util.regex.Pattern;
  */
 public class Slf4jSpyLogDelegator implements SpyLogDelegator {
 
+    private static volatile Pattern debugStackPrefixPattern;
+
+    private static Pattern getDebugStackPrefixPattern() {
+        if (debugStackPrefixPattern == null) {
+            String prefix = Properties.getDebugStackPrefix();
+            if (prefix != null) {
+                debugStackPrefixPattern = Pattern.compile(prefix);
+            }
+        }
+        return debugStackPrefixPattern;
+    }
+
     /**
      * Logger that shows all JDBC calls on INFO level (exception ResultSet calls)
      */
@@ -104,7 +116,7 @@ public class Slf4jSpyLogDelegator implements SpyLogDelegator {
     public void exceptionOccurred(Spy spy, String methodCall, Exception e, String sql, long execTime) {
         String classType = spy.getClassType();
         Integer spyNo = spy.getConnectionNumber();
-        String header = spyNo + ". " + classType + "." + methodCall;
+        String header = "[" + spyNo + "] " + classType + "." + methodCall;
         if (sql == null) {
             auditLogger.error(header, e);
             sqlOnlyLogger.error(header, e);
@@ -115,14 +127,14 @@ public class Slf4jSpyLogDelegator implements SpyLogDelegator {
 
             // if at debug level, display debug info to error log
             if (sqlOnlyLogger.isDebugEnabled()) {
-                sqlOnlyLogger.error("{}{}{}. {}", getDebugInfo(), nl, spyNo, sql, e);
+                sqlOnlyLogger.error("{}{}[{}] {}", getDebugInfo(), nl, spyNo, sql, e);
             } else {
                 sqlOnlyLogger.error("{} {}", header, sql, e);
             }
 
             // if at debug level, display debug info to error log
             if (sqlTimingLogger.isDebugEnabled()) {
-                sqlTimingLogger.error("{}{}{}. {} {FAILED after {} msec}", getDebugInfo(), nl, spyNo, sql, execTime, e);
+                sqlTimingLogger.error("{}{}[{}] {} {FAILED after {} msec}", getDebugInfo(), nl, spyNo, sql, execTime, e);
             } else {
                 sqlTimingLogger.error("{} FAILED! {} {FAILED after {} msec}", header, sql, execTime, e);
             }
@@ -135,7 +147,7 @@ public class Slf4jSpyLogDelegator implements SpyLogDelegator {
         Logger logger = ResultSetSpy.classTypeDescription.equals(classType) ?
                 resultSetLogger : auditLogger;
         if (logger.isInfoEnabled()) {
-            String header = spy.getConnectionNumber() + ". " + classType + "." +
+            String header = "[" + spy.getConnectionNumber() + "] " + classType + "." +
                     methodCall + " returned " + returnMsg;
             if (logger.isDebugEnabled()) {
                 logger.debug("{} {}", header, getDebugInfo());
@@ -160,64 +172,25 @@ public class Slf4jSpyLogDelegator implements SpyLogDelegator {
      */
     @Override
     public void connectionOpened(Spy spy, long execTime) {
-        // we just delegate to the already existing method,
-        // so that we do not change the behavior of the standard implementation
-        this.connectionOpened(spy);
-    }
-
-    /**
-     * Called whenever a new connection spy is created.
-     *
-     * @param spy ConnectionSpy that was created.
-     */
-    private void connectionOpened(Spy spy) {
-        if (connectionLogger.isDebugEnabled()) {
-            connectionLogger.info("{}. Connection opened {}", spy.getConnectionNumber(), getDebugInfo());
-            connectionLogger.debug(ConnectionSpy.getOpenConnectionsDump());
-        } else {
-            connectionLogger.info("{}. Connection opened", spy.getConnectionNumber());
-        }
+        logConnectionEvent(spy, "opened");
     }
 
     @Override
     public void connectionClosed(Spy spy, long execTime) {
-        // we just delegate to the already existing method,
-        // so that we do not change the behavior of the standard implementation
-        this.connectionClosed(spy);
-    }
-
-    /**
-     * Called whenever a connection spy is closed.
-     *
-     * @param spy ConnectionSpy that was closed.
-     */
-    private void connectionClosed(Spy spy) {
-        if (connectionLogger.isDebugEnabled()) {
-            connectionLogger.info("{}. Connection closed {}", spy.getConnectionNumber(), getDebugInfo());
-            connectionLogger.debug(ConnectionSpy.getOpenConnectionsDump());
-        } else {
-            connectionLogger.info("{}. Connection closed", spy.getConnectionNumber());
-        }
+        logConnectionEvent(spy, "closed");
     }
 
     @Override
     public void connectionAborted(Spy spy, long execTime) {
-        // we just delegate to the already existing method,
-        // so that we do not change the behavior of the standard implementation
-        this.connectionAborted(spy);
+        logConnectionEvent(spy, "aborted");
     }
 
-    /**
-     * Called whenever a connection spy is aborted.
-     *
-     * @param spy ConnectionSpy that was aborted.
-     */
-    private void connectionAborted(Spy spy) {
+    private void logConnectionEvent(Spy spy, String event) {
         if (connectionLogger.isDebugEnabled()) {
-            connectionLogger.info("{}. Connection aborted {}", spy.getConnectionNumber(), getDebugInfo());
+            connectionLogger.info("[{}] Connection {} {}", spy.getConnectionNumber(), event, getDebugInfo());
             connectionLogger.debug(ConnectionSpy.getOpenConnectionsDump());
         } else {
-            connectionLogger.info("{}. Connection aborted", spy.getConnectionNumber());
+            connectionLogger.info("[{}] Connection {}", spy.getConnectionNumber(), event);
         }
     }
 
@@ -225,7 +198,7 @@ public class Slf4jSpyLogDelegator implements SpyLogDelegator {
     public void sqlOccurred(Spy spy, String methodCall, String sql) {
         if (!Properties.isDumpSqlFilteringOn() || shouldSqlBeLogged(sql)) {
             if (sqlOnlyLogger.isDebugEnabled()) {
-                sqlOnlyLogger.debug("{}{}{}. {}", getDebugInfo(), nl, spy.getConnectionNumber(), processSql(sql));
+                sqlOnlyLogger.debug("{}{}[{}] {}", getDebugInfo(), nl, spy.getConnectionNumber(), processSql(sql));
             } else if (sqlOnlyLogger.isInfoEnabled()) {
                 sqlOnlyLogger.info(processSql(sql));
             }
@@ -285,8 +258,9 @@ public class Slf4jSpyLogDelegator implements SpyLogDelegator {
     private String buildSqlTimingDump(Spy spy, long execTime, String methodCall, String sql, boolean debugInfo) {
         StringBuilder out = new StringBuilder();
 
+        out.append("[");
         out.append(spy.getConnectionNumber());
-        out.append(". executed in ");
+        out.append("] executed in ");
         out.append(execTime);
         out.append(" ms | ");
         out.append(methodCall);
@@ -317,9 +291,9 @@ public class Slf4jSpyLogDelegator implements SpyLogDelegator {
     }
 
     @Override
-    public void resultSetCollected(ResultSetCollector resultSetCollector) {
+    public void resultSetCollected(Spy spy, ResultSetCollector resultSetCollector) {
         String resultsToPrint = new ResultSetCollectorPrinter().getResultSetToPrint(resultSetCollector);
-        resultSetTableLogger.info(resultsToPrint);
+        resultSetTableLogger.info("[{}] {}", spy.getConnectionNumber(), resultsToPrint);
     }
 
     @Override
@@ -372,7 +346,7 @@ public class Slf4jSpyLogDelegator implements SpyLogDelegator {
                 if (className.startsWith("net.sf.log4jdbc")) {
                     firstLog4jdbcCall = i;
                 } else if (Properties.isTraceFromApplication() &&
-                        Pattern.matches(Properties.getDebugStackPrefix(), className)) {
+                        getDebugStackPrefixPattern().matcher(className).matches()) {
                     lastApplicationCall = i;
                     break;
                 }

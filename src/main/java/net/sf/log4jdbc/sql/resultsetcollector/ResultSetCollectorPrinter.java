@@ -61,7 +61,7 @@ public class ResultSetCollectorPrinter {
             numeric[column - 1] = isNumericType(resultSetCollector.getColumnType(column));
         }
 
-        int maxColumnWidth = (int) Properties.getResultSetTableMaxColumnWidth();
+        int maxColumnWidth = Properties.getResultSetTableMaxColumnWidth();
 
         // 2. Calculate maximum width of each column (including column name)
         for (int column = 1; column <= columnCount; column++) {
@@ -110,7 +110,7 @@ public class ResultSetCollectorPrinter {
         table.append(createBorderLine(maxLength, '├', '┼', '┤'));
 
         // 8. Data rows
-        int maxRows = (int) Properties.getResultSetTableMaxRows();
+        int maxRows = Properties.getResultSetTableMaxRows();
         if (resultSetCollector.getRows() != null) {
             int rowIndex = 0;
             for (List<Object> printRow : resultSetCollector.getRows()) {

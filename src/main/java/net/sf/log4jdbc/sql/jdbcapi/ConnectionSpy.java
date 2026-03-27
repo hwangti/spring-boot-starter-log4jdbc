@@ -23,6 +23,7 @@ import net.sf.log4jdbc.sql.rdbmsspecifics.RdbmsSpecifics;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Wraps a JDBC Connection and reports method calls, returns and exceptions.
@@ -49,7 +50,7 @@ public class ConnectionSpy implements Connection, Spy {
     private SpyLogDelegator log;
 
     private final Integer connectionNumber;
-    private static int lastConnectionNumber = 0;
+    private static final AtomicInteger lastConnectionNumber = new AtomicInteger(0);
 
     /**
      * Contains a Mapping of connectionNumber to currently open ConnectionSpy
@@ -65,7 +66,7 @@ public class ConnectionSpy implements Connection, Spy {
      * @return an open connection dump.
      */
     public static String getOpenConnectionsDump() {
-        StringBuffer dump = new StringBuffer();
+        StringBuilder dump = new StringBuilder();
         int size;
         Integer[] keysArr;
         synchronized (connectionTracker) {
@@ -155,8 +156,8 @@ public class ConnectionSpy implements Connection, Spy {
         this.realConnection = realConnection;
         log = logDelegator;
 
+        connectionNumber = lastConnectionNumber.incrementAndGet();
         synchronized (connectionTracker) {
-            connectionNumber = ++lastConnectionNumber;
             connectionTracker.put(connectionNumber, this);
         }
         log.connectionOpened(this, execTime);

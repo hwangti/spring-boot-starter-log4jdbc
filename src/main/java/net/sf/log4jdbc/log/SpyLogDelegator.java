@@ -146,10 +146,11 @@ public interface SpyLogDelegator {
      * return <code>false</code> meaning that its end is reached.
      * It will be also called if the <code>ResultSet</code> is closed.</p>
      *
+     * @param spy the Spy wrapping the class where the result set was collected.
      * @param resultSetCollector the <code>ResultSetCollector</code> that has collected the result set.
      * @see net.sf.log4jdbc.sql.jdbcapi.ResultSetSpy
      * @see net.sf.log4jdbc.sql.resultsetcollector.DefaultResultSetCollector
      */
-    void resultSetCollected(ResultSetCollector resultSetCollector);
+    void resultSetCollected(Spy spy, ResultSetCollector resultSetCollector);
 
 }

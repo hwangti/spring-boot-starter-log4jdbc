@@ -38,13 +38,13 @@ public class CallableStatementSpy extends PreparedStatementSpy implements Callab
 
     @Override
     protected void reportAllReturns(String methodCall, String msg) {
-        log.methodReturned(this, methodCall, msg);
+        super.reportAllReturns(methodCall, msg);
     }
 
     /**
      * The real underlying CallableStatement that this CallableStatementSpy wraps.
      */
-    private CallableStatement realCallableStatement;
+    private final CallableStatement realCallableStatement;
 
     /**
      * Get the real underlying CallableStatement that this CallableStatementSpy wraps.
@@ -268,7 +268,7 @@ public class CallableStatementSpy extends PreparedStatementSpy implements Callab
     @Override
     public void registerOutParameter(int parameterIndex, int sqlType) throws SQLException {
         String methodCall = "registerOutParameter(" + parameterIndex + ", " + sqlType + ")";
-        argTraceSet(parameterIndex, null, "<OUT>");
+        argTraceSet(parameterIndex, "<OUT>");
         try {
             realCallableStatement.registerOutParameter(parameterIndex, sqlType);
         } catch (SQLException s) {
@@ -281,7 +281,7 @@ public class CallableStatementSpy extends PreparedStatementSpy implements Callab
     @Override
     public void registerOutParameter(int parameterIndex, int sqlType, int scale) throws SQLException {
         String methodCall = "registerOutParameter(" + parameterIndex + ", " + sqlType + ", " + scale + ")";
-        argTraceSet(parameterIndex, null, "<OUT>");
+        argTraceSet(parameterIndex, "<OUT>");
         try {
             realCallableStatement.registerOutParameter(parameterIndex, sqlType, scale);
         } catch (SQLException s) {
@@ -294,7 +294,7 @@ public class CallableStatementSpy extends PreparedStatementSpy implements Callab
     @Override
     public void registerOutParameter(int paramIndex, int sqlType, String typeName) throws SQLException {
         String methodCall = "registerOutParameter(" + paramIndex + ", " + sqlType + ", " + typeName + ")";
-        argTraceSet(paramIndex, null, "<OUT>");
+        argTraceSet(paramIndex, "<OUT>");
         try {
             realCallableStatement.registerOutParameter(paramIndex, sqlType, typeName);
         } catch (SQLException s) {

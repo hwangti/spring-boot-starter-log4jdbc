@@ -91,7 +91,7 @@ public class ResultSetSpy implements ResultSet, Spy {
             boolean finished = resultSetCollector.methodReturned(
                     this, methodCall, returnValue, realResultSet, methodParams);
             if (finished) {
-                log.resultSetCollected(resultSetCollector);
+                log.resultSetCollected(this, resultSetCollector);
                 resultSetCollector.reset();
             }
         }
@@ -124,7 +124,7 @@ public class ResultSetSpy implements ResultSet, Spy {
         this.resultSetCollector = resultSetCollector;
     }
 
-    private StatementSpy parent;
+    private final StatementSpy parent;
 
     /**
      * Create a new ResultSetSpy that wraps another ResultSet object, that logs all method calls, expceptions, etc.

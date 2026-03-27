@@ -176,9 +176,9 @@ public final class Properties {
 
     static final boolean HighlightSql;
 
-    static final long ResultSetTableMaxColumnWidth;
+    static final int ResultSetTableMaxColumnWidth;
 
-    static final long ResultSetTableMaxRows;
+    static final int ResultSetTableMaxRows;
 
     /*
      * Static initializer.
@@ -266,8 +266,8 @@ public final class Properties {
         FormatSql = getBooleanOption(props, "log4jdbc.format.sql", true);
         HighlightSql = getBooleanOption(props, "log4jdbc.highlight.sql", true);
 
-        ResultSetTableMaxColumnWidth = getLongOption(props, "log4jdbc.resultsettable.maxcolumnwidth", 50);
-        ResultSetTableMaxRows = getLongOption(props, "log4jdbc.resultsettable.maxrows", 50);
+        ResultSetTableMaxColumnWidth = getLongOption(props, "log4jdbc.resultsettable.maxcolumnwidth", 50).intValue();
+        ResultSetTableMaxRows = getLongOption(props, "log4jdbc.resultsettable.maxrows", 50).intValue();
 
         log.debug("log4jdbc-logj2 properties initialization done.");
     }
@@ -295,30 +295,20 @@ public final class Properties {
         if (log != null) {
             log.debug("Trying to use properties file " + propertyFile);
         }
-        InputStream propStream = Properties.class.getResourceAsStream(propertyFile);
-        if (propStream != null) {
-            try {
+        try (InputStream propStream = Properties.class.getResourceAsStream(propertyFile)) {
+            if (propStream != null) {
                 props.load(propStream);
-            } catch (IOException e) {
                 if (log != null) {
-                    log.debug("Error when loading log4jdbc.log4j2.properties from classpath: " +
-                            e.getMessage());
+                    log.debug("log4jdbc.logj2.properties loaded from classpath");
                 }
-            } finally {
-                try {
-                    propStream.close();
-                } catch (IOException e) {
-                    if (log != null) {
-                        log.debug("Error when closing log4jdbc.log4j2.properties file" + e.getMessage());
-                    }
+            } else {
+                if (log != null) {
+                    log.debug("log4jdbc.logj2.properties not found in classpath. Using System properties.");
                 }
             }
+        } catch (IOException e) {
             if (log != null) {
-                log.debug("log4jdbc.logj2.properties loaded from classpath");
-            }
-        } else {
-            if (log != null) {
-                log.debug("log4jdbc.logj2.properties not found in classpath. Using System properties.");
+                log.debug("Error when loading log4jdbc.log4j2.properties from classpath: " + e.getMessage());
             }
         }
 
@@ -656,7 +646,7 @@ public final class Properties {
      *
      * @return the ResultSetTableMaxColumnWidth
      */
-    public static long getResultSetTableMaxColumnWidth() {
+    public static int getResultSetTableMaxColumnWidth() {
         return ResultSetTableMaxColumnWidth;
     }
 
@@ -667,7 +657,7 @@ public final class Properties {
      *
      * @return the ResultSetTableMaxRows
      */
-    public static long getResultSetTableMaxRows() {
+    public static int getResultSetTableMaxRows() {
         return ResultSetTableMaxRows;
     }
 

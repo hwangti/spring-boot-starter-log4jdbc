@@ -60,7 +60,7 @@ public class RdbmsSpecifics {
             return "'" + new SimpleDateFormat(dateFormat).format(object) + "'";
         } else if (object instanceof Boolean) {
             return Properties.isDumpBooleanAsTrueFalse() ?
-                    (Boolean) object ? "true" : "false"
+                    ((Boolean) object).toString()
                     : (Boolean) object ? "1" : "0";
         } else {
             return object.toString();
