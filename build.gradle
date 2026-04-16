@@ -9,7 +9,7 @@ buildscript {
         mavenPublishingArtifactName = 'Spring Boot Starter Log4Jdbc'
         mavenPublishingDescription = 'The Log4jdbc Spring Boot Starter facilitates the quick and easy use of log4jdbc in Spring Boot projects.'
         coordinateGroup = 'kr.hwangti'
-        libraryVersion = '1.1.1'
+        libraryVersion = '1.1.2'
         gitUrl = 'https://github.com/hwangti/spring-boot-starter-log4jdbc'
     }
 }
